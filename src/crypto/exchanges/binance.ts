@@ -17,21 +17,23 @@ export class BinanceService implements IExchangeService {
 		try {
 			const binanceSymbol = `${inputCurrency}${outputCurrency}`;
 			const binanceResponse = await axios.get(
-				"https://api.binance.com/api/v3/ticker/price",
+				process.env.BINANCE_BASE_URL + "/api/v3/trades",
 				{
-					params: { symbol: binanceSymbol },
+					params: { symbol: binanceSymbol, limit: 1 },
 				}
 			);
 
-			const binancePriceData = binanceResponse.data;
+			const binanceTradesData = binanceResponse.data;
 
-			if (!binancePriceData.price) {
+			if (binanceTradesData === 0) {
 				return "No price data found for the given currency pair";
 			}
-			const binancePrice = parseFloat(binancePriceData.price);
+			const binanceLastTradePrice = parseFloat(
+				binanceTradesData[0].price
+			);
 
 			if (reverse) {
-				const binanceOutputAmount = inputAmount / binancePrice;
+				const binanceOutputAmount = inputAmount / binanceLastTradePrice;
 				console.log({
 					exchangeName: "binance",
 					outputAmount: binanceOutputAmount,
@@ -41,7 +43,7 @@ export class BinanceService implements IExchangeService {
 					outputAmount: binanceOutputAmount,
 				};
 			} else {
-				const binanceOutputAmount = inputAmount * binancePrice;
+				const binanceOutputAmount = inputAmount * binanceLastTradePrice;
 				console.log({
 					exchangeName: "binance",
 					outputAmount: binanceOutputAmount,

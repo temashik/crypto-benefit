@@ -17,21 +17,22 @@ export class KucoinService implements IExchangeService {
 		try {
 			const kucoinSymbol = `${inputCurrency}-${outputCurrency}`;
 			const kucoinResponse = await axios.get(
-				"https://api.kucoin.com/api/v1/market/orderbook/level1",
+				process.env.KUCOIN_BASE_URL + "/api/v1/market/histories",
 				{
 					params: { symbol: kucoinSymbol },
 				}
 			);
 
-			const kucoinPriceData = kucoinResponse.data;
+			const kucoinTradesData = kucoinResponse.data;
 
-			if (!kucoinPriceData.data || !kucoinPriceData.data.price) {
+			if (kucoinTradesData.length === 0) {
 				return "No price data found for the given currency pair";
 			}
-
-			const kucoinPrice = parseFloat(kucoinPriceData.data.price);
+			const kucoinLastTradePrice = parseFloat(
+				kucoinTradesData.data[0].price
+			);
 			if (reverse) {
-				const kucoinOutputAmount = inputAmount / kucoinPrice;
+				const kucoinOutputAmount = inputAmount / kucoinLastTradePrice;
 				console.log({
 					exchangeName: "kucoin",
 					outputAmount: kucoinOutputAmount,
@@ -41,7 +42,7 @@ export class KucoinService implements IExchangeService {
 					outputAmount: kucoinOutputAmount,
 				};
 			} else {
-				const kucoinOutputAmount = inputAmount * kucoinPrice;
+				const kucoinOutputAmount = inputAmount * kucoinLastTradePrice;
 				console.log({
 					exchangeName: "kucoin",
 					outputAmount: kucoinOutputAmount,
