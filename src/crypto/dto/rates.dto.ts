@@ -4,6 +4,6 @@ export interface RatesFieldsDto {
 }
 
 export interface RatesOutputDto {
-	exchangeName: string;
+	exchangerName: string;
 	rate: number;
 }

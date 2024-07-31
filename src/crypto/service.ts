@@ -1,113 +1,123 @@
 import { inject, injectable, tagged } from "inversify";
 import "reflect-metadata";
 import "dotenv/config";
-import { ICryptoService } from "./service.interface";
+import { ICryptoService, IFindSymbolResult } from "./service.interface";
 import { EstimateFieldsDto, EstimateOutputDto } from "./dto/estimate.dto";
 import axios from "axios";
 import { RatesFieldsDto, RatesOutputDto } from "./dto/rates.dto";
 import { TYPES } from "../types";
-import { IExchangeService } from "./exchanges/exchange.interface";
+import { IExchangerService } from "./exchangers/exchanger.interface";
 
 @injectable()
 export class CryptoService implements ICryptoService {
 	constructor(
 		@inject(TYPES.BinanceService)
-		@tagged("exchange", TYPES.BinanceService)
-		private binanceService: IExchangeService,
+		@tagged("exchanger", TYPES.BinanceService)
+		private binanceService: IExchangerService,
 		@inject(TYPES.KucoinService)
-		@tagged("exchange", TYPES.KucoinService)
-		private kucoinService: IExchangeService
+		@tagged("exchanger", TYPES.KucoinService)
+		private kucoinService: IExchangerService
 	) {}
 
-	private getAllExchanges(): IExchangeService[] {
-		const allExchanges = [this.binanceService, this.kucoinService];
-		return allExchanges;
+	// ability to scale amount of exchangers by passing in array instances of exchangers
+	private getAllExchangers(): IExchangerService[] {
+		const allExchangers = [this.binanceService, this.kucoinService];
+		return allExchangers;
 	}
 
-	async getBestEstimatedMarketValue(dto: EstimateFieldsDto): Promise<any> {
-		const binanceSymbol = `${dto.inputCurrency}${dto.outputCurrency}`;
+	// finding most profitable exchanger for buying provided amount of one currency using another
+	async getBestEstimatedMarketValue({
+		inputAmount,
+		inputCurrency,
+		outputCurrency,
+	}: EstimateFieldsDto): Promise<any> {
+		const symbolFindingResult = await this.findSymbol(
+			inputCurrency,
+			outputCurrency
+		);
+		if (typeof symbolFindingResult === "string") return symbolFindingResult;
+		let result: EstimateOutputDto | undefined = undefined;
+		const allExchangers = this.getAllExchangers();
+		const exchangerPromises = allExchangers.map(async (exchanger) => {
+			const exchangerResult =
+				await exchanger.getExchangerEstimatedMarketValue(
+					{
+						inputAmount,
+						inputCurrency: symbolFindingResult.firstCurrency,
+						outputCurrency: symbolFindingResult.secondCurrency,
+					},
+					symbolFindingResult.reverse
+				);
+			if (typeof exchangerResult !== "string") {
+				if (
+					result === undefined ||
+					result.outputAmount < exchangerResult.outputAmount
+				) {
+					result = exchangerResult;
+				}
+			}
+		});
+
+		await Promise.all(exchangerPromises);
+		return result;
+	}
+
+	// listing all exchangers for trade between provided currencies
+	async getAllMarketPricesForCurrency({
+		baseCurrency,
+		quoteCurrency,
+	}: RatesFieldsDto): Promise<any> {
+		const symbolFindingResult = await this.findSymbol(
+			baseCurrency,
+			quoteCurrency
+		);
+		if (typeof symbolFindingResult === "string") return symbolFindingResult;
+		let result: RatesOutputDto[] = [];
+		const allExchangers = this.getAllExchangers();
+		const exchangerPromises = allExchangers.map(async (exchanger) => {
+			const exchangerResult =
+				await exchanger.getExchangerPriceForCurrency(
+					{
+						baseCurrency: symbolFindingResult.firstCurrency,
+						quoteCurrency: symbolFindingResult.secondCurrency,
+					},
+					symbolFindingResult.reverse
+				);
+			if (typeof exchangerResult !== "string") {
+				result.push(exchangerResult);
+			}
+		});
+
+		await Promise.all(exchangerPromises);
+		return result;
+	}
+
+	// function to finding out if needed to change places in order of currencies and further calculation process
+	private async findSymbol(
+		firstCurrency: string,
+		secondCurrency: string
+	): Promise<IFindSymbolResult | string> {
+		const binanceSymbol = `${firstCurrency}${secondCurrency}`;
 		try {
 			await axios.get(
 				`https://api.binance.com/api/v3/exchangeInfo?symbol=${binanceSymbol}`
 			);
-			let result: EstimateOutputDto | undefined = undefined;
-			const allExchanges = this.getAllExchanges();
-			const exchangePromises = allExchanges.map(async (exchange) => {
-				const exchangeResult =
-					await exchange.getExchangeEstimatedMarketValue(dto, false);
-				if (typeof exchangeResult !== "string") {
-					if (
-						result === undefined ||
-						result.outputAmount < exchangeResult.outputAmount
-					) {
-						result = exchangeResult;
-					}
-				}
-			});
-
-			await Promise.all(exchangePromises);
-			return result;
+			return { reverse: false, firstCurrency, secondCurrency };
 		} catch (error) {
-			if (axios.isAxiosError(error)) {
-				// console.error("Axios error:", error.message);
-				if (
-					error.response &&
-					error.response.data.msg === "Invalid symbol."
-				) {
-					let result: EstimateOutputDto | undefined = undefined;
-					const allExchanges = this.getAllExchanges();
-					const exchangePromises = allExchanges.map(
-						async (exchange) => {
-							const exchangeResult =
-								await exchange.getExchangeEstimatedMarketValue(
-									{
-										inputAmount: dto.inputAmount,
-										inputCurrency: dto.outputCurrency,
-										outputCurrency: dto.inputCurrency,
-									},
-									true
-								);
-							if (typeof exchangeResult !== "string") {
-								if (
-									result === undefined ||
-									result.outputAmount <
-										exchangeResult.outputAmount
-								) {
-									result = exchangeResult;
-								}
-							}
-						}
-					);
-
-					await Promise.all(exchangePromises);
-					return result;
-				}
+			if (
+				axios.isAxiosError(error) &&
+				error.response &&
+				error.response.data.msg === "Invalid symbol."
+			) {
+				return {
+					reverse: true,
+					firstCurrency: secondCurrency,
+					secondCurrency: firstCurrency,
+				};
 			} else {
 				console.error("Unexpected error:", error);
 				return "Unexpected error";
 			}
 		}
-	}
-
-	async getAllSymbols({
-		inputAmount,
-		inputCurrency,
-		outputCurrency,
-	}: EstimateFieldsDto) {
-		const binanceSymbol = `${inputCurrency}${outputCurrency}`;
-		const binanceResponse = await axios.get(
-			"https://api.binance.com/api/v3/exchangeInfo",
-			{
-				params: { symbol: binanceSymbol },
-			}
-		);
-		console.log(binanceResponse);
-	}
-
-	async getAllMarketPricesForCurrency({
-		baseCurrency,
-		quoteCurrency,
-	}: RatesFieldsDto): Promise<RatesOutputDto[] | string> {
-		return "123";
 	}
 }

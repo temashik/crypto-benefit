@@ -5,6 +5,6 @@ export interface EstimateFieldsDto {
 }
 
 export interface EstimateOutputDto {
-	exchangeName: string;
+	exchangerName: string;
 	outputAmount: number;
 }

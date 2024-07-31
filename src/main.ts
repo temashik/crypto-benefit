@@ -2,9 +2,9 @@ import { Container, ContainerModule, interfaces } from "inversify";
 import { App } from "./app";
 import { CryptoController } from "./crypto/controller";
 import { ICryptoController } from "./crypto/controller.interface";
-import { BinanceService } from "./crypto/exchanges/binance";
-import { IExchangeService } from "./crypto/exchanges/exchange.interface";
-import { KucoinService } from "./crypto/exchanges/kucoin";
+import { BinanceService } from "./crypto/exchangers/binance";
+import { IExchangerService } from "./crypto/exchangers/exchanger.interface";
+import { KucoinService } from "./crypto/exchangers/kucoin";
 import { CryptoService } from "./crypto/service";
 import { ICryptoService } from "./crypto/service.interface";
 import { TYPES } from "./types";
@@ -22,12 +22,12 @@ export const appBindings = new ContainerModule((bind: interfaces.Bind) => {
 	bind<ICryptoService>(TYPES.CryptoService)
 		.to(CryptoService)
 		.inSingletonScope();
-	bind<IExchangeService>(TYPES.BinanceService)
+	bind<IExchangerService>(TYPES.BinanceService)
 		.to(BinanceService)
-		.whenTargetTagged("exchange", TYPES.BinanceService);
-	bind<IExchangeService>(TYPES.KucoinService)
+		.whenTargetTagged("exchanger", TYPES.BinanceService);
+	bind<IExchangerService>(TYPES.KucoinService)
 		.to(KucoinService)
-		.whenTargetTagged("exchange", TYPES.KucoinService);
+		.whenTargetTagged("exchanger", TYPES.KucoinService);
 });
 
 async function bootstrap(): Promise<IBootstrapReturn> {

@@ -9,3 +9,9 @@ export interface ICryptoService {
 		dto: RatesFieldsDto
 	) => Promise<RatesOutputDto[] | string>;
 }
+
+export interface IFindSymbolResult {
+	reverse: boolean;
+	firstCurrency: string;
+	secondCurrency: string;
+}

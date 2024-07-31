@@ -39,6 +39,9 @@ export class CryptoController
 		req: Request<{}, {}, RatesFieldsDto>,
 		res: Response
 	): Promise<void> {
-		// const result = await this.ideaService.storeIdeas(req.body);
+		const result = await this.cryptoService.getAllMarketPricesForCurrency(
+			req.body
+		);
+		res.json(result);
 	}
 }
