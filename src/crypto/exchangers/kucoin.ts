@@ -14,7 +14,7 @@ export class KucoinService implements IExchangerService {
 		{ inputAmount, inputCurrency, outputCurrency }: EstimateFieldsDto,
 		reverse: boolean
 	): Promise<EstimateOutputDto | string> {
-		const kucoinLastTradePrice = await this.getCourse(
+		const kucoinLastTradePrice = await this.getRate(
 			inputCurrency,
 			outputCurrency
 		);
@@ -47,7 +47,7 @@ export class KucoinService implements IExchangerService {
 		{ baseCurrency, quoteCurrency }: RatesFieldsDto,
 		reverse: boolean
 	): Promise<RatesOutputDto | string> {
-		const kucoinLastTradePrice = await this.getCourse(
+		const kucoinLastTradePrice = await this.getRate(
 			baseCurrency,
 			quoteCurrency
 		);
@@ -69,7 +69,7 @@ export class KucoinService implements IExchangerService {
 		}
 	}
 
-	private async getCourse(
+	private async getRate(
 		inputCurrency: string,
 		outputCurrency: string
 	): Promise<number | string> {
