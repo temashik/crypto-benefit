@@ -30,13 +30,13 @@ export class CryptoService implements ICryptoService {
 		inputAmount,
 		inputCurrency,
 		outputCurrency,
-	}: EstimateFieldsDto): Promise<any> {
+	}: EstimateFieldsDto): Promise<EstimateOutputDto | string> {
 		const symbolFindingResult = await this.findSymbol(
 			inputCurrency,
 			outputCurrency
 		);
 		if (typeof symbolFindingResult === "string") return symbolFindingResult;
-		let result: EstimateOutputDto | undefined = undefined;
+		let result: EstimateOutputDto = { exchangerName: "", outputAmount: 0 };
 		const allExchangers = this.getAllExchangers();
 		const exchangerPromises = allExchangers.map(async (exchanger) => {
 			const exchangerResult =
@@ -49,12 +49,11 @@ export class CryptoService implements ICryptoService {
 					symbolFindingResult.reverse
 				);
 			if (typeof exchangerResult !== "string") {
-				if (
-					result === undefined ||
-					result.outputAmount < exchangerResult.outputAmount
-				) {
+				if (result.outputAmount < exchangerResult.outputAmount) {
 					result = exchangerResult;
 				}
+			} else {
+				return exchangerResult;
 			}
 		});
 
@@ -66,7 +65,7 @@ export class CryptoService implements ICryptoService {
 	async getAllMarketPricesForCurrency({
 		baseCurrency,
 		quoteCurrency,
-	}: RatesFieldsDto): Promise<any> {
+	}: RatesFieldsDto): Promise<RatesOutputDto[] | string> {
 		const symbolFindingResult = await this.findSymbol(
 			baseCurrency,
 			quoteCurrency
@@ -85,6 +84,8 @@ export class CryptoService implements ICryptoService {
 				);
 			if (typeof exchangerResult !== "string") {
 				result.push(exchangerResult);
+			} else {
+				return exchangerResult;
 			}
 		});
 
@@ -100,7 +101,8 @@ export class CryptoService implements ICryptoService {
 		const binanceSymbol = `${firstCurrency}${secondCurrency}`;
 		try {
 			await axios.get(
-				`https://api.binance.com/api/v3/exchangeInfo?symbol=${binanceSymbol}`
+				process.env.BINANCE_BASE_URL +
+					`/api/v3/exchangeInfo?symbol=${binanceSymbol}`
 			);
 			return { reverse: false, firstCurrency, secondCurrency };
 		} catch (error) {

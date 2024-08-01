@@ -17,7 +17,7 @@ export class App {
 		private cryptoController: CryptoController
 	) {
 		this.app = express();
-		this.port = +process.env.PORT!;
+		this.port = process.env.PORT ? +process.env.PORT : 8000;
 	}
 
 	useMiddleware(): void {
