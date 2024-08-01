@@ -52,8 +52,6 @@ export class CryptoService implements ICryptoService {
 				if (result.outputAmount < exchangerResult.outputAmount) {
 					result = exchangerResult;
 				}
-			} else {
-				return exchangerResult;
 			}
 		});
 
@@ -84,8 +82,6 @@ export class CryptoService implements ICryptoService {
 				);
 			if (typeof exchangerResult !== "string") {
 				result.push(exchangerResult);
-			} else {
-				return exchangerResult;
 			}
 		});
 
